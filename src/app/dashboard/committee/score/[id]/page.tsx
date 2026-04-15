@@ -41,7 +41,7 @@ export default function CommitteeScoringPage() {
   const [events, setEvents] = useState<any[]>([]);
 
   // --- UI State ---
-  const [sheet, setSheet] = useState<{ type: 'none' | 'player-score' | 'player-foul' | 'foul-type'; points?: number; player?: Player }>({ type: 'none' });
+  const [sheet, setSheet] = useState<{ type: 'none' | 'player-score' | 'player-foul' | 'foul-type' | 'finalize'; points?: number; player?: Player }>({ type: 'none' });
   const [notification, setNotification] = useState<{ message: string; color: string } | null>(null);
 
   // 1. Initial Load
@@ -196,6 +196,89 @@ export default function CommitteeScoringPage() {
 
   const currentTeam = teamSide === 'home' ? match.home_team : match.away_team;
 
+  // --- Logic Helpers ---
+  const [finalData, setFinalData] = useState({ pogId: '', opponentScore: '' });
+  const [photos, setPhotos] = useState<{ pog: File | null; team: File | null }>({ pog: null, team: null });
+  const [finalizing, setFinalizing] = useState(false);
+
+  // Calculate Top Performers for recommendation
+  const topPerformers = useMemo(() => {
+    return Object.entries(playerStats)
+      .map(([id, stats]) => {
+        const player = roster.find(r => r.id === id);
+        // Requirement formula: (PTS * 1) + (REB * 1.2) + (AST * 1.5)
+        const pogScore = stats.points * 1; 
+        return { player, pogScore, stats };
+      })
+      .filter(p => p.player && p.pogScore > 0)
+      .sort((a, b) => b.pogScore - a.pogScore)
+      .slice(0, 3);
+  }, [playerStats, roster]);
+
+  const handlePhotoChange = (e: any, type: 'pog' | 'team') => {
+    if (e.target.files?.[0]) setPhotos(p => ({ ...p, [type]: e.target.files[0] }));
+  };
+
+  const handleFinalSubmit = async () => {
+    if (!finalData.pogId) return alert('Please select POG');
+    if (finalData.opponentScore === '') return alert('Please report opponent score');
+    
+    setFinalizing(true);
+    try {
+      // 1. Upload Photos
+      let pogUrl = '';
+      let teamUrl = '';
+      const { uploadFile } = await import('@/lib/storage');
+      if (photos.pog) pogUrl = await uploadFile(photos.pog, 'match-media', `pog-${matchId}`);
+      if (photos.team) teamUrl = await uploadFile(photos.team, 'match-media', `team-${matchId}`);
+
+      // 2. Update Input
+      const finalScoreJson = {
+        score,
+        reported_opponent_score: parseInt(finalData.opponentScore),
+        quarter,
+        quarterScores,
+        teamFouls,
+        playerStats,
+        events,
+        pog_id: finalData.pogId,
+        pog_photo: pogUrl,
+        team_photo: teamUrl
+      };
+
+      const { error: upsertError } = await supabase.from('match_score_inputs').upsert({
+        match_id: matchId as string,
+        user_id: profile!.id,
+        team_side: teamSide,
+        score_json: finalScoreJson,
+        is_finalized: true,
+        updated_at: new Date().toISOString()
+      });
+
+      if (upsertError) throw upsertError;
+
+      // 3. Resolve Match
+      const { resolveMatch } = await import('@/lib/matchResolution');
+      try {
+        const result = await resolveMatch(matchId as string);
+        showNotification(`🏆 Match Finalized! ${result.finalHomeScore} - ${result.finalAwayScore}`, '#22c55e');
+        setTimeout(() => router.push('/dashboard/committee'), 2000);
+      } catch (err: any) {
+        if (err.message.includes('Agreement required')) {
+          showNotification('Saved! Waiting for other committee to finalize...', '#EAB308');
+          setTimeout(() => router.push('/dashboard/committee'), 3000);
+        } else {
+          showNotification(err.message, '#ef4444');
+        }
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert('Error finalizing: ' + err.message);
+    } finally {
+      setFinalizing(false);
+    }
+  };
+
   return (
     <div className="px-4 pt-6 pb-24 space-y-4 animate-slide-up">
       {/* Notifications */}
@@ -318,7 +401,7 @@ export default function CommitteeScoringPage() {
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1 text-center block">POG Photo</label>
                   <label className="aspect-square glass rounded-2xl flex flex-col items-center justify-center gap-2 border-dashed border-white/20 hover:border-orange-500/40 transition-colors cursor-pointer relative overflow-hidden">
-                    <input type="file" accept="image/*" capture="camera" className="hidden" onChange={(e) => handlePhotoChange(e, 'pog')} />
+                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handlePhotoChange(e, 'pog')} />
                     {photos.pog ? <img src={URL.createObjectURL(photos.pog)} className="absolute inset-0 w-full h-full object-cover" /> : <><span className="text-2xl">📸</span><span className="text-[8px] font-black text-white/20 uppercase">Take/Upload</span></>}
                   </label>
                 </div>
@@ -347,93 +430,5 @@ export default function CommitteeScoringPage() {
     </div>
   );
 
-  // --- Logic Helpers ---
-  const [finalData, setFinalData] = useState({ pogId: '', opponentScore: '' });
-  const [photos, setPhotos] = useState<{ pog: File | null; team: File | null }>({ pog: null, team: null });
-  const [finalizing, setFinalizing] = useState(false);
-
-  // Calculate Top Performers for recommendation
-  const topPerformers = useMemo(() => {
-    return Object.entries(playerStats)
-      .map(([id, stats]) => {
-        const player = roster.find(r => r.id === id);
-        // Requirement formula: (PTS * 1) + (REB * 1.2) + (AST * 1.5)
-        // Since we currently only track PTS in this simple UI, we'll use that. 
-        // In a full version, stats would include rebounds/assists.
-        const pogScore = stats.points * 1; 
-        return { player, pogScore, stats };
-      })
-      .filter(p => p.player && p.pogScore > 0)
-      .sort((a, b) => b.pogScore - a.pogScore)
-      .slice(0, 3);
-  }, [playerStats, roster]);
-
-  const handlePhotoChange = (e: any, type: 'pog' | 'team') => {
-    if (e.target.files?.[0]) setPhotos(p => ({ ...p, [type]: e.target.files[0] }));
-  };
-
-  const handleFinalSubmit = async () => {
-    if (!finalData.pogId) return alert('Please select POG');
-    if (finalData.opponentScore === '') return alert('Please report opponent score');
-    
-    setFinalizing(true);
-    try {
-      // 1. Upload Photos to 'match-media' bucket
-      let pogUrl = '';
-      let teamUrl = '';
-      
-      const { uploadFile } = await import('@/lib/storage');
-      
-      if (photos.pog) pogUrl = await uploadFile(photos.pog, 'match-media', `pog-${matchId}`);
-      if (photos.team) teamUrl = await uploadFile(photos.team, 'match-media', `team-${matchId}`);
-
-      // 2. Update Input and finalize it
-      const finalScoreJson = {
-        score,
-        reported_opponent_score: parseInt(finalData.opponentScore),
-        quarter,
-        quarterScores,
-        teamFouls,
-        playerStats,
-        events,
-        pog_id: finalData.pogId,
-        pog_photo: pogUrl,
-        team_photo: teamUrl
-      };
-
-      const { error: upsertError } = await supabase.from('match_score_inputs').upsert({
-        match_id: matchId as string,
-        user_id: profile!.id,
-        team_side: teamSide,
-        score_json: finalScoreJson,
-        is_finalized: true,
-        updated_at: new Date().toISOString()
-      });
-
-      if (upsertError) throw upsertError;
-
-      // 3. Check for Agreement
-      const { resolveMatch } = await import('@/lib/matchResolution');
-      try {
-        const result = await resolveMatch(matchId as string);
-        showNotification(`🏆 Match Finalized! ${result.finalHomeScore} - ${result.finalAwayScore}`, '#22c55e');
-        setTimeout(() => router.push('/dashboard/committee'), 2000);
-      } catch (err: any) {
-        // If resolveMatch fails with "Agreement required", it just means waiting for other side
-        if (err.message.includes('Agreement required')) {
-          showNotification('Saved! Waiting for other committee to finalize...', '#EAB308');
-          setTimeout(() => router.push('/dashboard/committee'), 3000);
-        } else {
-          showNotification(err.message, '#ef4444');
-        }
-      }
-
-    } catch (err: any) {
-      console.error(err);
-      alert('Error finalizing: ' + err.message);
-    } finally {
-      setFinalizing(false);
-    }
-  };
 }
 

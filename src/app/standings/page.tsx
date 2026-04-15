@@ -29,7 +29,13 @@ export default function StandingsPage() {
       .order('wins', { ascending: false })
       .order('points_for', { ascending: false });
     
-    if (data) setStandings(data);
+    if (data) {
+      const enriched = data.map(team => ({
+        ...team,
+        pd: (team.points_for || 0) - (team.points_against || 0)
+      })).sort((a, b) => b.wins - a.wins || b.pd - a.pd);
+      setStandings(enriched);
+    }
     setLoading(false);
   }, [supabase]);
 
@@ -68,24 +74,28 @@ export default function StandingsPage() {
       <GlassCard className="!p-0 overflow-hidden">
         <div className="grid grid-cols-12 px-5 py-3 bg-white/5 border-b border-white/5 text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">
            <div className="col-span-1">#</div>
-           <div className="col-span-5">Team</div>
+           <div className="col-span-3">Team</div>
            <div className="col-span-2 text-center">W</div>
            <div className="col-span-2 text-center">L</div>
-           <div className="col-span-2 text-center">PTS</div>
+           <div className="col-span-2 text-center">PF</div>
+           <div className="col-span-2 text-center text-orange-500">PD</div>
         </div>
         <div className="divide-y divide-white/5">
            {standings.map((team, idx) => (
              <div key={team.id} className="grid grid-cols-12 px-5 py-4 items-center">
                 <div className="col-span-1 text-[10px] font-bold text-white/20">{idx + 1}</div>
-                <div className="col-span-5 flex items-center gap-3">
-                   <div className="w-8 h-8 rounded-lg flex items-center justify-center font-display text-xs text-white" style={{ background: `${team.color}20`, border: `1px solid ${team.color}40` }}>
+                <div className="col-span-3 flex items-center gap-3">
+                   <div className="w-8 h-8 rounded-lg flex items-center justify-center font-display text-[10px] text-white" style={{ background: `${team.color}20`, border: `1px solid ${team.color}40` }}>
                      {team.short_name}
                    </div>
-                   <span className="text-sm font-bold text-white truncate">{team.name}</span>
+                   <span className="text-[11px] font-bold text-white truncate">{team.name}</span>
                 </div>
-                <div className="col-span-2 text-center font-display text-lg text-white">{team.wins}</div>
-                <div className="col-span-2 text-center font-display text-lg text-white/40">{team.losses}</div>
-                <div className="col-span-2 text-center font-display text-lg text-orange-500">{team.points_for}</div>
+                <div className="col-span-2 text-center font-display text-base text-white">{team.wins}</div>
+                <div className="col-span-2 text-center font-display text-base text-white/40">{team.losses}</div>
+                <div className="col-span-2 text-center font-display text-base text-white/60">{team.points_for}</div>
+                <div className="col-span-2 text-center font-display text-base text-orange-500">
+                  {team.pd > 0 ? `+${team.pd}` : team.pd}
+                </div>
              </div>
            ))}
         </div>

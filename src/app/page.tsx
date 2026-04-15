@@ -13,6 +13,13 @@ export default function PublicLivePage() {
   const supabase = createClient();
   const router = useRouter();
 
+  const [leagues, setLeagues] = useState<any[]>([]);
+
+  const fetchLeagues = useCallback(async () => {
+    const { data } = await supabase.from('leagues').select('*').limit(5);
+    if (data) setLeagues(data);
+  }, [supabase]);
+
   const fetchLiveMatches = useCallback(async () => {
     // 1. Fetch matches that are 'live' or 'scheduled' for today
     const { data: matches, error } = await supabase
@@ -34,31 +41,23 @@ export default function PublicLivePage() {
           .select('*')
           .eq('match_id', m.id);
         
-        // Aggregate scores: Home Side Comm provides Home Score, Away Side Comm provides Away Score
         const homeInput = inputs?.find(i => i.team_side === 'home')?.score_json;
         const awayInput = inputs?.find(i => i.team_side === 'away')?.score_json;
-
-        // Discrepancy logic: Check if they disagree on each other's scores
-        const hasDiscrepancy = homeInput && awayInput && (
-          homeInput.score !== (awayInput.reported_home_score ?? m.home_score) || 
-          awayInput.score !== (homeInput.reported_away_score ?? m.away_score)
-        );
 
         return {
           ...m,
           current_home_score: homeInput?.score ?? m.home_score,
           current_away_score: awayInput?.score ?? m.away_score,
           current_quarter: homeInput?.quarter ?? m.quarter,
-          is_discrepancy: hasDiscrepancy
         };
       }));
 
       setLiveMatches(updatedMatches);
     }
-    setLoading(false);
   }, [supabase]);
 
   useEffect(() => {
+    fetchLeagues();
     fetchLiveMatches();
     
     // Subscribe to changes in score inputs for real-time updates
@@ -72,7 +71,7 @@ export default function PublicLivePage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, fetchLiveMatches]);
+  }, [supabase, fetchLiveMatches, fetchLeagues]);
 
   if (loading) return (
     <div className="min-h-dvh flex items-center justify-center">
@@ -85,15 +84,54 @@ export default function PublicLivePage() {
       <header className="flex items-center justify-between">
         <div>
           <p className="text-[10px] font-black tracking-[0.2em] uppercase text-orange-500/80 mb-1">
-            Live Tournament
+            Official Hub
           </p>
           <h1 className="font-display text-4xl brand-gradient-text leading-tight">Northside League</h1>
         </div>
-        <div className="glass rounded-2xl px-3 py-2 flex items-center gap-2">
-           <span className="w-2 h-2 rounded-full bg-red-500 live-dot" />
-           <span className="text-[10px] font-black text-white/40 tracking-widest uppercase">REALTIME</span>
+        <div 
+          onClick={() => router.push('/dashboard')}
+          className="glass rounded-full p-2 cursor-pointer hover:bg-white/10 transition-colors"
+        >
+           <span className="text-xl">👤</span>
         </div>
       </header>
+
+      {/* --- Tournament Hub Navigation --- */}
+      <section className="grid grid-cols-3 gap-3">
+         <button 
+           onClick={() => router.push('/standings')}
+           className="glass flex flex-col items-center gap-2 p-4 rounded-3xl hover:bg-white/10 transition-all group"
+         >
+            <span className="text-2xl group-hover:scale-110 transition-transform">🏆</span>
+            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Standings</span>
+         </button>
+         <button 
+           onClick={() => router.push('/stats')}
+           className="glass flex flex-col items-center gap-2 p-4 rounded-3xl hover:bg-white/10 transition-all group"
+         >
+            <span className="text-2xl group-hover:scale-110 transition-transform">📊</span>
+            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Stats</span>
+         </button>
+         <button 
+           onClick={() => {
+              const leagueId = leagues[0]?.id;
+              if (leagueId) router.push(`/bracket/${leagueId}`);
+           }}
+           className="glass flex flex-col items-center gap-2 p-4 rounded-3xl hover:bg-white/10 transition-all group"
+         >
+            <span className="text-2xl group-hover:scale-110 transition-transform">🌳</span>
+            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Bracket</span>
+         </button>
+      </section>
+
+      {/* Hero Live Match */}
+      <div className="flex items-center justify-between ml-1 pt-2">
+         <h2 className="text-xs font-bold tracking-[0.2em] uppercase text-white/20">Live Scoring</h2>
+         <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-red-500 live-dot" />
+            <span className="text-[9px] font-black text-white/40 tracking-widest uppercase">REALTIME</span>
+         </div>
+      </div>
 
       {/* Hero Live Match */}
       {liveMatches.length > 0 ? (

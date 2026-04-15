@@ -66,8 +66,11 @@ export default function LoginPage() {
               required
               disabled={loading}
             />
-            <div className="flex justify-end pr-1">
-              <Link href="/forgot-password" disabled={loading} className="text-[9px] font-bold text-orange-400/60 hover:text-orange-400 uppercase tracking-widest">
+            <div className="flex justify-end pr-1 text-right">
+              <Link 
+                href="/forgot-password" 
+                className={`text-[9px] font-bold text-orange-400/60 hover:text-orange-400 uppercase tracking-widest transition-colors ${loading ? 'pointer-events-none opacity-50' : ''}`}
+              >
                 Forgot Password?
               </Link>
             </div>
