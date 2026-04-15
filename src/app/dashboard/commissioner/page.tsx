@@ -1,5 +1,18 @@
+'use client';
+
+import { useState, useCallback, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import GlassCard from '@/components/ui/GlassCard';
+import { useAuth } from '@/components/providers/AuthProvider';
+
+export default function CommissionerPage() {
+  const supabase = createClient();
+  const { profile } = useAuth();
+
   const [matches, setMatches] = useState<any[]>([]);
   const [committees, setCommittees] = useState<any[]>([]);
+  const [selectedLeague, setSelectedLeague] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   const fetchMatches = useCallback(async (leagueId: string) => {
     const { data, error } = await supabase
@@ -23,22 +36,16 @@
     if (!error && data) setCommittees(data);
   }, [supabase]);
 
+  // Initial data fetch
   useEffect(() => {
-    fetchLeagues().then(() => {
-      setLoading(false);
-      fetchCommittees();
-    });
-  }, [fetchLeagues, fetchCommittees]);
+    fetchCommittees().then(() => setLoading(false));
+  }, [fetchCommittees]);
 
   useEffect(() => {
     if (selectedLeague) {
-      fetchTeams(selectedLeague.id);
       fetchMatches(selectedLeague.id);
-      setPreviewMatches([]);
     }
-  }, [selectedLeague, fetchTeams, fetchMatches]);
-
-  // ... (previous creation functions) ...
+  }, [selectedLeague, fetchMatches]);
 
   const handleUpdateAssignment = async (matchId: string, side: 'home' | 'away', committeeId: string) => {
     const updates: any = {};
@@ -50,79 +57,72 @@
       .update(updates)
       .eq('id', matchId);
 
-    if (!error) {
-      fetchMatches(selectedLeague!.id);
+    if (!error && selectedLeague) {
+      fetchMatches(selectedLeague.id);
     }
   };
 
+  if (loading) return <div>Loading...</div>;
+
   return (
-    <div className="px-4 pt-6 pb-24 space-y-8 animate-slide-up">
-      {/* ... header and league creation ... */}
+    <div className="px-4 pt-6 pb-24 space-y-8 animate-slide-up text-white">
+      <header>
+         <h1 className="text-3xl font-display">Commissioner Dashboard</h1>
+      </header>
 
-      {/* --- League Nav --- */}
-      {/* ... leagues tabs ... */}
+      {/* --- League Selection Placeholder --- */}
+      {/* (Assuming leagues are fetched elsewhere or provided) */}
+      
+      <section className="space-y-4 pt-4">
+        <div className="flex items-center justify-between ml-1">
+          <h2 className="text-sm font-bold tracking-widest uppercase text-white/60">
+            Match Assignments
+          </h2>
+          <span className="text-[10px] font-bold text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">
+            {matches.length} Scheduled
+          </span>
+        </div>
 
-      {selectedLeague && (
-        <>
-          {/* --- Teams Section --- */}
-          {/* ... teams setup ... */}
+        <div className="space-y-3">
+          {matches.map(match => (
+            <GlassCard key={match.id} className="!p-5 space-y-4">
+               <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                  <div className="flex items-center gap-2">
+                     <span className="text-[10px] font-black bg-orange-500 text-white px-1.5 py-0.5 rounded leading-none">R{match.round_number}</span>
+                     <span className="text-xs font-bold text-white/60">Match #{match.match_order}</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">{match.status}</span>
+               </div>
 
-          {/* --- Bracket Section --- */}
-          {/* ... bracket generation ... */}
-
-          {/* --- Match Scheduling & Assignment --- */}
-          <section className="space-y-4 pt-4">
-            <div className="flex items-center justify-between ml-1">
-              <h2 className="text-sm font-bold tracking-widest uppercase text-white/60">
-                Match Assignments
-              </h2>
-              <span className="text-[10px] font-bold text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">
-                {matches.length} Scheduled
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {matches.map(match => (
-                <GlassCard key={match.id} className="!p-5 space-y-4">
-                   <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                      <div className="flex items-center gap-2">
-                         <span className="text-[10px] font-black bg-orange-500 text-white px-1.5 py-0.5 rounded leading-none">R{match.round_number}</span>
-                         <span className="text-xs font-bold text-white/60">Match #{match.match_order}</span>
-                      </div>
-                      <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">{match.status}</span>
-                   </div>
-
-                   <div className="flex items-center justify-between text-sm py-1">
-                      <div className="text-center flex-1">
-                         <p className="font-display text-lg text-white">{match.home_team?.short_name || 'TBD'}</p>
-                         <select 
-                            className="mt-2 w-full glass bg-white/5 text-[9px] font-bold uppercase tracking-wider rounded-lg p-1.5 outline-none border-none"
-                            value={match.home_committee_id || ''}
-                            onChange={(e) => handleUpdateAssignment(match.id, 'home', e.target.value)}
-                         >
-                            <option value="">Assign Home Comm.</option>
-                            {committees.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-                         </select>
-                      </div>
-                      <div className="px-6 text-white/20 font-display text-xl">VS</div>
-                      <div className="text-center flex-1">
-                         <p className="font-display text-lg text-white">{match.away_team?.short_name || 'TBD'}</p>
-                         <select 
-                            className="mt-2 w-full glass bg-white/5 text-[9px] font-bold uppercase tracking-wider rounded-lg p-1.5 outline-none border-none"
-                            value={match.away_committee_id || ''}
-                            onChange={(e) => handleUpdateAssignment(match.id, 'away', e.target.value)}
-                         >
-                            <option value="">Assign Away Comm.</option>
-                            {committees.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-                         </select>
-                      </div>
-                   </div>
-                </GlassCard>
-              ))}
-            </div>
-          </section>
-        </>
-      )}
+               <div className="flex items-center justify-between text-sm py-1">
+                  <div className="text-center flex-1">
+                     <p className="font-display text-lg text-white">{match.home_team?.short_name || 'TBD'}</p>
+                     <select 
+                        className="mt-2 w-full glass bg-white/5 text-[9px] font-bold uppercase tracking-wider rounded-lg p-1.5 outline-none border-none text-white"
+                        value={match.home_committee_id || ''}
+                        onChange={(e) => handleUpdateAssignment(match.id, 'home', e.target.value)}
+                     >
+                        <option value="" className="bg-black">Assign Home Comm.</option>
+                        {committees.map(c => <option key={c.id} value={c.id} className="bg-black text-white">{c.full_name}</option>)}
+                     </select>
+                  </div>
+                  <div className="px-6 text-white/20 font-display text-xl">VS</div>
+                  <div className="text-center flex-1">
+                     <p className="font-display text-lg text-white">{match.away_team?.short_name || 'TBD'}</p>
+                     <select 
+                        className="mt-2 w-full glass bg-white/5 text-[9px] font-bold uppercase tracking-wider rounded-lg p-1.5 outline-none border-none text-white"
+                        value={match.away_committee_id || ''}
+                        onChange={(e) => handleUpdateAssignment(match.id, 'away', e.target.value)}
+                     >
+                        <option value="" className="bg-black">Assign Away Comm.</option>
+                        {committees.map(c => <option key={c.id} value={c.id} className="bg-black text-white">{c.full_name}</option>)}
+                     </select>
+                  </div>
+               </div>
+            </GlassCard>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

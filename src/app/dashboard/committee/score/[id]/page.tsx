@@ -435,7 +435,5 @@ export default function CommitteeScoringPage() {
       setFinalizing(false);
     }
   };
-
-  // --- Finalize UI (inside return statement via sheet.type === 'finalize') ---
-  // (Assuming we are replacing the previous block in the file)
+}
 
