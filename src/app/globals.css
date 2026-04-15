@@ -1,0 +1,187 @@
+@import "tailwindcss";
+
+/* ============================================
+   POST PROPER NORTHSIDE BASKETBALL
+   Global Design System - Dark Mode by Default
+   iOS meets TikTok Aesthetic
+   (Fonts loaded via <link> in layout.tsx)
+   ============================================ */
+
+:root {
+  /* Core Brand Colors */
+  --brand-orange: #FF6B1A;
+  --brand-orange-light: #FF8C4A;
+  --brand-orange-glow: rgba(255, 107, 26, 0.3);
+
+  /* Dark Mode Backgrounds */
+  --bg-primary: #080810;
+  --bg-secondary: #0F0F1A;
+  --bg-tertiary: #141428;
+
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-bg-hover: rgba(255, 255, 255, 0.09);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-border-active: rgba(255, 107, 26, 0.5);
+
+  /* Text */
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-muted: rgba(255, 255, 255, 0.35);
+
+  /* Nav Height */
+  --nav-height: 82px;
+}
+
+/* ---- Base ---- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  background-color: var(--bg-primary);
+  scroll-behavior: smooth;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 107, 26, 0.3);
+  border-radius: 999px;
+}
+
+/* ---- Typography ---- */
+.font-display {
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.04em;
+}
+
+/* ---- Glassmorphism Utilities ---- */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+}
+
+.glass-hover {
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+.glass-hover:hover {
+  background: var(--glass-bg-hover);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.glass-hover:active {
+  transform: scale(0.97);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* ---- Brand Gradient ---- */
+.brand-gradient {
+  background: linear-gradient(135deg, #FF6B1A 0%, #E63950 100%);
+}
+
+.brand-gradient-text {
+  background: linear-gradient(135deg, #FF6B1A 0%, #FF4E8A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ---- Glow Effects ---- */
+.glow-orange {
+  box-shadow: 0 0 20px var(--brand-orange-glow), 0 0 40px rgba(255, 107, 26, 0.1);
+}
+
+.glow-text {
+  text-shadow: 0 0 20px rgba(255, 107, 26, 0.5);
+}
+
+/* ---- Background mesh ---- */
+.bg-mesh {
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(255, 107, 26, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(230, 57, 80, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 100%, rgba(255, 107, 26, 0.05) 0%, transparent 60%),
+    var(--bg-primary);
+}
+
+/* ---- Live pulse animation ---- */
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes score-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.live-dot {
+  animation: live-pulse 1.5s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s ease forwards;
+}
+
+.score-pop {
+  animation: score-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* ---- Micro-interactions ---- */
+.press-scale {
+  transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.press-scale:active {
+  transform: scale(0.92);
+}
+
+.tap-bounce {
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.tap-bounce:active {
+  transform: scale(0.88) rotate(-1deg);
+}
+
+/* ---- Bottom Nav Safe Area ---- */
+.safe-bottom {
+  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
+}
