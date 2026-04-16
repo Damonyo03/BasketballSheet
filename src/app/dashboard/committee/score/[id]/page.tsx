@@ -19,6 +19,12 @@ type PlayerStats = { points: number; fouls: number; technicalFouls: number; unsp
 const SUSPENSION_DURATION_MS = 2 * 60 * 1000;
 const TECH_FOUL_EJECTION_LIMIT = 2;
 
+interface SheetState {
+  type: 'none' | 'player-score' | 'player-foul' | 'foul-type' | 'finalize';
+  points?: number;
+  player?: Player;
+}
+
 export default function CommitteeScoringPage() {
   const { id: matchId } = useParams();
   const searchParams = useSearchParams();
@@ -41,8 +47,7 @@ export default function CommitteeScoringPage() {
   const [events, setEvents] = useState<any[]>([]);
 
   // --- UI State ---
-  type SheetType = 'none' | 'player-score' | 'player-foul' | 'foul-type' | 'finalize';
-  const [sheet, setSheet] = useState<{ type: SheetType; points?: number; player?: Player }>({ type: 'none' });
+  const [sheet, setSheet] = useState<SheetState>({ type: 'none' });
   const [notification, setNotification] = useState<{ message: string; color: string } | null>(null);
 
   // 1. Initial Load
