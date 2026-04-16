@@ -41,7 +41,8 @@ export default function CommitteeScoringPage() {
   const [events, setEvents] = useState<any[]>([]);
 
   // --- UI State ---
-  const [sheet, setSheet] = useState<{ type: 'none' | 'player-score' | 'player-foul' | 'foul-type' | 'finalize'; points?: number; player?: Player }>({ type: 'none' });
+  type SheetType = 'none' | 'player-score' | 'player-foul' | 'foul-type' | 'finalize';
+  const [sheet, setSheet] = useState<{ type: SheetType; points?: number; player?: Player }>({ type: 'none' });
   const [notification, setNotification] = useState<{ message: string; color: string } | null>(null);
 
   // 1. Initial Load
